@@ -41,12 +41,13 @@ df <- arrange(df, Date_Occurance)
 rows_remove <- nrow(filter(df, year(Date_Occurance) != 2019))
 df <- df[-(1:rows_remove),]
 
-## Clean up Crime Codes for easier analysis
-df %>% mutate(Crime = sprintf("%06d", Crime))
+## Clean up Crime Codes for easier analysis by adding leading "0" to strings with less 
+## than 5 digits
+df <-  mutate(df, Crime = sprintf("%06d", Crime))
 
 ## Add Column that tells day of the week for crime repeat to add month of the year
 df <- mutate(df, Time = ((hour(Date_Occurance)*60) + (minute(Date_Occurance))))
-df <- mutate(df, Day = wday(day(Date_Occurance) , label = TRUE ))
+df <- mutate(df, Day = wday(Date_Occurance, label = TRUE))
 df <- mutate(df, Month = month(Date_Occurance, label = TRUE))
 ## Specify order for Months so that the factors are not arranged alphabetically
 ## Leaving this block of code out for now because it does not carry between scripts
@@ -60,13 +61,14 @@ library(dplyr)
 library(rvest)
 
 url <- "https://en.wikipedia.org/wiki/List_of_neighborhoods_of_St._Louis"
+
 ## Scrape names of 79 different sections of city and then append 9 extra parks counted in report
-neighborhoods <- read_html(url) %>% html_nodes("tbody:nth-child(1) td a") %>% html_text()
-neighborhoods <- neighborhoods[1:79]
+Neighborhood <- read_html(url) %>% html_nodes("tbody:nth-child(1) td a") %>% html_text()
+Neighborhood <- Neighborhood[1:79]
 extra_neighborhoods <- c("Carondelet Park", "Tower Grove Park", "Forest Park", "Fairgrounds Park"
                          , "Penrose Park", "O'Fallon Park", "Cal-Bel Cemetery", "Botanical Garden"
                          , "Wilmore Park")
-neighborhoods <- append(neighborhoods, extra_neighborhoods)
+Neighborhood <- append(Neighborhood, extra_neighborhoods)
 
 ## Use For loop to create vector of all neighborhood number identifiers
 da <- c()
@@ -85,9 +87,11 @@ da <- append(da, da1)
 ## Change data type of da to numeric so we can reorder later
 da <- as.numeric(da)
 
-
 ## Create tibble with two columns for da and neighborhoods
-neigh <- as.tibble(cbind(da, neighborhoods))
+neigh <- as.tibble(cbind(da, Neighborhood))
+
+## Merge df and neigh by their neighborhood id
+#df <- merge(df, neigh[, c("da", "Neighborhood")], by = "da")
 
 ## Generalize Crime in new column based off the first two digits of six digit code
 ## Reference codebook in github account for codes
