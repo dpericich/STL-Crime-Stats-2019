@@ -7,6 +7,7 @@
 library(tidyverse)
 library(lubridate)
 library(rvest)
+library(rvest)
 
 ## After storing all files in a single folder in the project, load all their names into a variable
 #setwd("months/")
@@ -25,11 +26,11 @@ df <- do.call(rbind.data.frame, All)
 ## Add in column headers to dataframe
 names(df) <- c("Complaint", "Coded_Month", "Date_Occurance", "Flag_Crime", "Flag_Unfounded",
                "Flag_Administrative", "Count", "Flag_Cleanup", "Crime", "District", "Description",
-               "ILEADsAddress", "ILEADSStreet", "Neighborhood", "Location_Name", 
+               "ILEADsAddress", "ILEADSStreet", "NeighNumber", "Location_Name", 
                "Location_Comment", "CADAddress", "CADStreet", "XCoord", "YCoord")
 
 ## Convert data frame to a tibble
-df <- as.tibble(df)
+df <- as_tibble(df)
 
 ## Use Lubridate to cleanup "Date_Occurance" column
 df <- mutate(df, Date_Occurance = mdy_hm(Date_Occurance))
@@ -56,44 +57,60 @@ df <- mutate(df, Month = month(Date_Occurance, label = TRUE))
 
 ## URL pulled on 1/22/20 at 22:24 Standard
 
-## Load in libraries for tidying data with tibbles and webscraping to pull table data
-library(dplyr)
-library(rvest)
-
 url <- "https://en.wikipedia.org/wiki/List_of_neighborhoods_of_St._Louis"
 
 ## Scrape names of 79 different sections of city and then append 9 extra parks counted in report
-Neighborhood <- read_html(url) %>% html_nodes("tbody:nth-child(1) td a") %>% html_text()
-Neighborhood <- Neighborhood[1:79]
+NeighName <- read_html(url) %>% html_nodes("tbody:nth-child(1) td a") %>% html_text()
+NeighName <- NeighName[1:79]
 extra_neighborhoods <- c("Carondelet Park", "Tower Grove Park", "Forest Park", "Fairgrounds Park"
                          , "Penrose Park", "O'Fallon Park", "Cal-Bel Cemetery", "Botanical Garden"
                          , "Wilmore Park")
-Neighborhood <- append(Neighborhood, extra_neighborhoods)
+NeighName <- append(NeighName, extra_neighborhoods)
 
 ## Use For loop to create vector of all neighborhood number identifiers
-da <- c()
+NeighNumber <- c()
 for(i in 1:20){
   for(j in 0:3) {
     if(i + j*20 <= 79){
-      da <- append(da, i + j*20)
+      NeighNumber <- append(NeighNumber, i + j*20)
     }
   }
 }
 
 ## Add in numbers for Parks which are designated numeric identifiers
-da1 <- c(80, 81, 82, 83, 84, 85, 86, 87, 88)
-da <- append(da, da1)
+extraNeigh <- c(80, 81, 82, 83, 84, 85, 86, 87, 88)
+NeighNumber <- append(NeighNumber, extraNeigh)
 
 ## Change data type of da to numeric so we can reorder later
-da <- as.numeric(da)
+NeighNumber <- as.numeric(NeighNumber)
 
 ## Create tibble with two columns for da and neighborhoods
-neigh <- as.tibble(cbind(da, Neighborhood))
+neigh <- as.data.frame(cbind(NeighNumber, NeighName))
 
 ## Merge df and neigh by their neighborhood id
-#df <- merge(df, neigh[, c("da", "Neighborhood")], by = "da")
+## First add another column to df to store NeighNames
+df <- mutate(df, NeighName = 0)
+#df$NeighName <- match(df$NeighNumber, neigh$NeighNumber)
+df$NeighName <- neigh[match(df$NeighNumber, neigh$NeighNumber), 2]
 
 ## Generalize Crime in new column based off the first two digits of six digit code
 ## Reference codebook in github account for codes
+## Create Column based off 2 digit quick codes based off of 6 digit "Crime" column
+df <- mutate(df, Crime_General = substr(df$Crime, start = 1, stop = 2))
+
+## Create string for all offenses
+crime_type <- c("Criminal Homicide", "Forceible Rape", "Robbery", "Aggravated Assault", 
+                "Burglary", "Larceny", "Motor Vehicle Theft", "Arson", "Other Assualts",
+                "Forgery and Counterfeiting", "Fraud", "Embezzlement", "Stolen Property", 
+                "Vandalism", "Weapons Possession", "Prosititution", "Sex Offenses", 
+                "Drug Abuse Violations", "Gambling", "Offenses Against the Family and Children", 
+                "Driving Under the Influence", "Liquor Laws", "Drunkenness",
+                "Disorderly Conduct", "Vagrancy", "All Other Offenses")
+crime_number <- sprintf("%02d", 1:26)
+crime <- as.data.frame(cbind(crime_number, crime_type))
+
+## Match up crime with 2 digit code
+df$Crime_Type <- crime[match(df$Crime_General, crime$crime_number), 2]
+
 #write.csv(df, file = "sources.csv")
 write.csv(df, "C:/Users/Daniel/Desktop/STL-Crime-Stats-2019/source.csv")
