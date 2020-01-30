@@ -66,3 +66,37 @@ crime <- as.data.frame(cbind(crime_number, crime_type))
 df$Crime_Type <- crime[match(df$Crime_General, crime$crime_number), 2]
 
 ## 3 - Locations
+## Use rvest to scrape Neighborhood names and their numbers from wikipedia
+url <- "https://en.wikipedia.org/wiki/List_of_neighborhoods_of_St._Louis"
+
+NeighName <- read_html(url) %>% html_nodes("tbody:nth-child(1) td a") %>% html_text()
+
+## Select only the first 79 text elements for the neighborhoods and combine them with the 9 areas
+NeighName <- NeighName[1:79]
+extra_neighborhoods <- c("Carondelet Park", "Tower Grove Park", "Forest Park", "Fairgrounds Park"
+                         , "Penrose Park", "O'Fallon Park", "Cal-Bel Cemetery", "Botanical Garden"
+                         , "Wilmore Park")
+NeighName <- append(NeighName, extra_neighborhoods)
+
+## Use for loop to create vector of nummbers that correspond to scraped names above
+NeighNumber <- c()
+for(i in 1:20){
+  for(j in 0:3) {
+    if(i + j*20 <= 79){
+      NeighNumber <- append(NeighNumber, i + j*20)
+    }
+  }
+}
+
+## Add in the 9 extra neighborhood numbers and add them to NeighNumber
+extraNeigh <- (80:88)
+NeighNumber <- append(NeighNumber, extraNeigh)
+
+## Create data frame with two columns of neighborhood values
+neigh <- as.data.frame(cbind(NeighNumber, NeighName))
+
+## Merge df and neigh by their neighborhood id
+df$NeighName <- neigh[match(df$NeighNumber, neigh$NeighNumber), 2]
+
+## create a csv file with data to be loaded for analysis
+write.csv(df, file = "source.csv")
