@@ -43,6 +43,7 @@ df <- df[-(1:rows_to_remove),]
 
 ## Add in Columns for days of the week and months of the year
 df <- mutate(df, Minute = ((hour(Date_Occurrence)*60) + (minute(Date_Occurrence))))
+df <- mutate(df, Hour = (hour(Date_Occurrence)))
 df <- mutate(df, Day = wday(Date_Occurrence, label = TRUE))
 df <- mutate(df, Month = month(Date_Occurrence, label = TRUE))
 
@@ -53,7 +54,7 @@ df <- mutate(df, Crime = sprintf("%06d", Crime))
 df <- mutate(df, Crime_General = substr(df$Crime, start = 1, stop =2))
 
 ## Create second data frame for Crime Code Description Matching
-crime_type <- c("Criminal Homicide", "Forceible Rape", "Robbery", "Aggravated Assault", 
+crime_type <- c("Criminal Homicide", "Forcible Rape", "Robbery", "Aggravated Assault", 
                 "Burglary", "Larceny", "Motor Vehicle Theft", "Arson", "Other Assualts",
                 "Forgery and Counterfeiting", "Fraud", "Embezzlement", "Stolen Property", 
                 "Vandalism", "Weapons Possession", "Prosititution", "Sex Offenses", 
@@ -68,11 +69,23 @@ df$Crime_Type <- crime[match(df$Crime_General, crime$crime_number), 2]
 ## 3 - Locations
 ## Use rvest to scrape Neighborhood names and their numbers from wikipedia
 url <- "https://en.wikipedia.org/wiki/List_of_neighborhoods_of_St._Louis"
+wiki <- read_html(url)
 
-NeighName <- read_html(url) %>% html_nodes("tbody:nth-child(1) td a") %>% html_text()
+NeighName <- wiki %>% html_nodes("tbody:nth-child(1) td a") %>% html_text()
 
-## Select only the first 79 text elements for the neighborhoods and combine them with the 9 areas
+## Select only the first 79 text elements for the neighborhoods 
 NeighName <- NeighName[1:79]
+
+## Naming convetion between Wikipedia list and table are inconsistent which leads to NA values 
+## when we use a join based off neighborhood names. Manually correcting inconsistencies
+NeighName[7] <- "Clayton-Tamm"
+NeighName[23] <- "Skinker-DeBaliviere"
+NeighName[25] <- "South Hampton"
+NeighName[32] <- "O’Fallon"
+NeighName[42] <- "The Gate District"
+NeighName[50] <- "Peabody Darst Webbe"
+
+## Combine 79 neighborhood names with 9 public areas defined by SLMPD
 extra_neighborhoods <- c("Carondelet Park", "Tower Grove Park", "Forest Park", "Fairgrounds Park"
                          , "Penrose Park", "O'Fallon Park", "Cal-Bel Cemetery", "Botanical Garden"
                          , "Wilmore Park")
@@ -97,6 +110,20 @@ neigh <- as.data.frame(cbind(NeighNumber, NeighName))
 
 ## Merge df and neigh by their neighborhood id
 df$NeighName <- neigh[match(df$NeighNumber, neigh$NeighNumber), 2]
+
+
+## 4 - Population
+## Load in Neighborhoods and their populations as a table
+population <- wiki %>% html_nodes("td:nth-child(2)") %>% html_text()
+population <- population[-(1:20)]
+
+NeighName <- read_html(url) %>% html_nodes("td:nth-child(1)") %>% html_text()
+NeighName <- NeighName[-c(1:20, 100:103)]
+
+popul <- as.data.frame(cbind(population, NeighName))
+
+## Match the populations to the neighborhoods using the neighborhood name
+df$Population <- popul[match(df$NeighName, popul$NeighName), 1]
 
 ## create a csv file with data to be loaded for analysis
 write.csv(df, file = "source.csv")
