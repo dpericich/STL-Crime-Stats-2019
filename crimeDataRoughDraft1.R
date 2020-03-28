@@ -100,3 +100,5 @@ population_vs_crime <- ggplot(data = neighborhood_population, mapping = aes(x = 
   geom_line(aes(y = Crime, color = "red")) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
                           
+df_prevent <- df %>% filter(Crime_Type %in% preventable_crimes) %>% group_by(Crime_Type) %>%
+  summarise(Crime_Type, n())
