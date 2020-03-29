@@ -1,0 +1,265 @@
+---
+title: "St. Louis City Crime Analysis for 2019"
+author: "Daniel Pericich"
+date: "3/29/2020"
+output: html_document
+---
+
+```{r echo = FALSE, include = FALSE}
+## Add in all necessary libraries
+library(dplyr)
+library(rvest)
+library(ggplot2)
+library(gridExtra)
+
+## Load in necessary data from csv file and convert to tibble
+source <- read.csv(file = "source.csv")
+df <- as_tibble(source)
+
+## Turn echo to false so code does not show in report file
+```
+
+<h2><u>Abstract</h2></u>
+<p> St. Louis City is thought to be one of the more dangerous major cities in both the Midwest and in the country. Reviewing the public crime records from 2019-2020, I found that there were 47,855 recordable crimes committed within the city of St. Louis. With this number of crimes in mind, and taking into account the estimated population of the city is only 307,866 people, by living in the city you had about a 1 in 6 chance of having a recordable crime committed against you during the 2019 calendar year.^1^ This statistic is very much a blanket statistic, and because of this, I will do a deeper dive into the numbers over the course of this report. </p>
+
+<p>The goal of this report is to perform data analysis on the crime record database I have created and reveal insights into when and where crime was most common during 2019. Due to the undermanned police force in the city of St. Louis, roughly 140 police officers short as of January 2020, this report could be used as an aide in directing placement and timing of police presence in order to deter and prevent crime.^2^ </p>
+
+
+<h2><u>Methods</h2></u>
+<p>In order to obtain, clean and then analyze the city of STL crime data, I used the scripting language R. This allowed me to pull all the csv files from the St. Louis Metropolitan Police Department website and combine them into a single R dataframe.^3^ From here I deleted unnecessary columns, used webscraping to pull in neighborhood names and populations and used Regular Expressions to simplify factor classifications for crimes.</p>
+
+<p>I then performed exploratory analysis on the dataframe to determine which crimes stood out the most, the time of their occurrence and the area of their occurrence. This exploration led to the findings that will come later in the report.</p>
+
+<p>A link to the repository where I store the preprocessing script, the exploratory graph script, the final data frame csv file and the Markdown version of this report can be found in the notes section.^4^</p>
+
+<h2><u>Analysis</h2></u>
+<p>	The first things I wanted to look at for this data were the breakdown of crimes committed by month: </p>
+```{r echo=FALSE}
+monthly <- df %>% group_by(Month) %>%  summarise(Crime = n())
+monthly$Month <- factor(monthly$Month, 
+                         levels = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep",
+                                    "Oct", "Nov", "Dec"))
+months_base <- ggplot(data = monthly, mapping = aes(x = Month, y = Crime)) +
+  geom_bar(stat = "identity", fill = "Gold") +
+  labs(title = "St. Louis City Crime Counts by Month in 2019", x = "Months in 2019", y = "Number of Crimes",
+       caption = "Fig 1 : Chart showing crime counts for every month of 2019 recorded in St. Louis City.") +
+  theme(plot.title = element_text(hjust = 0.5), plot.caption = element_text(hjust = 0))
+  
+
+months_base
+```
+
+<br>
+<p> Crimes committed by day of the week :</p>
+```{r echo = FALSE}
+daily <- df %>% group_by( Day) %>% summarise(Crime = n())
+daily$Day <- factor(daily$Day, 
+                      levels = c("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"))
+
+wdays_base <- ggplot(data = daily, aes(x = Day, y = Crime)) +
+  geom_bar(stat = "identity", fill = "Black") + 
+  labs(title = "St. Louis City Crime Counts by Day of the Week in 2019", x = "Day of the Week", 
+       y = "Number of Crimes", caption = "Fig 2 : Total crime counts for days of the week in 2019") +
+  theme(plot.title = element_text(hjust = 0.5), plot.caption = element_text(hjust = 0))
+
+wdays_base
+```
+<br>
+<br>
+<p> and finally crimes committed by hour of the day :</p>
+<br>
+```{r echo = FALSE}
+hourly <- df %>% group_by(Hour) %>% summarise(Crime = n())
+
+hours_base <- ggplot(data = hourly, aes(x = Hour, y = Crime)) +
+  geom_bar(stat = "identity", fill = "orange") + 
+  geom_vline(xintercept = 12,color = "black") + 
+  labs(title = "St. Louis City Crime Counts by Hour of the Day in 2019", 
+       x = "Hour of the Day", y = "Number of Crimes",
+       caption = "Fig 3 : A graph of all crimes in STL City graphed by hour of the day occuring over the course of 2019.") +
+  theme(plot.title = element_text(hjust = 0.5), plot.caption = element_text(hjust = 0))
+
+hours_base
+```
+
+<p>From these plots you can see that generally speaking, July is the most dangerous month of the year, Tuesdays are slightly higher than Fridays for crime and that crime peaks around 5PM. While this does provide some insight into baskets of when general crime occurs, it does not tell us what occurs or where it occurs. To get these insights, we will need to look at crime by neighborhood and crime type.</p>
+
+<p>The next data to key in on is general crime by neighborhood. This will be done by grouping each neighborhood and graphing each neighborhoods' annual crime count. Due to the high number of areas, the city of St. Louis Police reports include 79 neighborhoods and 9 general city areas, I will only show the top ten neighborhoods which each contribute at least 2% of the annual total crime in St. Louis. A table with full neighborhood rankings and total crime counts can be found in the appendix.</p>
+```{r echo = FALSE}
+neighborhood <- df %>% filter(is.na(NeighName) != TRUE) %>% group_by(NeighName) %>% summarise(Crime = n())
+neigh_ranked <- neighborhood %>% arrange(desc(Crime))
+top_ten <- neigh_ranked[1:10,]
+top_ten_base <- ggplot(data = top_ten, mapping = aes(x = reorder(NeighName, -Crime), y = Crime)) +
+  geom_bar(stat = "identity", fill = "Gold") +
+  labs(title = "St. Louis City Top 10 Neighborhoods by Crime Count in 2019", x = "Neighborhood",
+       y = "Number of Crimes", caption = "Fig 4 : The top 10 neighborhoods in St. Louis City from 2019 based off of number of crimes committed.") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), plot.title = element_text(hjust = 0.5),
+        plot.caption = element_text(hjust = 0))
+
+top_ten_base
+```
+
+<p>	After that I wanted to look at crimes by count. What crimes are occurring the most often? I will show a table with the top ten crimes here. A full table can be found in the appendix.</p>
+
+```{r echo = FALSE}
+crime_count <- df %>% group_by(Crime_Type) %>% summarise(Crime = n()) %>% arrange(desc(Crime))
+crime_count_top_10 <- crime_count[1:10,]
+crime_count_top_10
+```
+<p>Fig 5 : The top 10 crimes by count in St. Louis City during 2019.</p>
+<br>
+<p>	Along with knowing the crime counts, I wanted to see if there were general peak hours for certain crimes. To do this I plotted all 24 general types of crime by hour committed and produced a time series graph which can be found in the appendix. The shapes of most crimes we see follow our original observation that crime seems to peak at 5PM.</p>
+
+<p>	From our preliminary tables and graphs, we know what neighborhoods have the most crimes, what crimes are most common and the general timing of crimes by hour, weekday and month of the year. This information, while helpful in understanding general trends, does not fully answer our question of how to deter and prevent crime. To do this we will need to drill down even further by crime type and neighborhood.</p>
+
+<p>	The crime type time series graph is difficult to read due to the 24 different types of crime shown. From examining the types of crime, it is clear that not every type of crime can be stopped simply by police presence. In order to make this study more effective, we will remove some of the types of crimes that do not fit into our “deter and prevent” goal.</p>
+
+<p>	Crimes that will be excluded going forward include: “All Other Offenses,” “Driving Under the Influence,” “Drug Abuse Violations,” “Embezzlement,” “Forgery and Counterfeiting,” “Fraud,” “Liquor Laws,” “Offenses Against the Family and Children,” “Sex Offenses,” “Stolen Property,” “Vagrancy” and “Weapons Possession.” While “Prostitution” would be a crime that would be deterred by police presence, I am not including it because there were only 3 counts in 2019.</p>
+
+<p>	Some of the crimes that are not being investigated above are due to not being easily monitored. One cause for concern from a data integrity standpoint is the exclusion of crimes categorized as “All Other Offenses.” This crime accounted for 8,702 crimes (~18.2% of all crime) and is a large part of the data set. However, the vagueness of the category makes it difficult to infer how to prevent this large set of crimes.</p>
+
+<p>What Crimes will we be looking at then? The crimes we will be examining fall into three categories: theft, destructive acts and violent crimes. Theft includes "Burglary," "Larceny," "Motor Vehicle Theft," and "Robbery." Destructive acts include "Arson" and "Vandalism." The final category is violent crimes which includes "Aggravated Assualt," "Criminal Homicide," "Forcible Rape," and "Other Assaults." These categories will be important in determining the answer to where resources should be placed, and what their placement will prevent. 
+
+<p>	With a core set of crimes to look at, I next wanted to see how each neighborhood ranks with each crime. This will let us see if certain preventable crimes are centered in the same neighborhood. To do this I sorted the neighborhoods by counts of each of the three categories of preventable crimes. I then plotted the top 10 neighborhoods by count. The results can be seen below :</p>
+<br>
+```{r echo = FALSE, message=FALSE, fig.width = 13.5}
+## Take preventable crimes and further break them down into subcategories
+theft <- c("Burglary", "Larceny", "Motor Vehicle Theft", "Robbery")
+destruction <- c("Arson", "Vandalism")
+violent_crimes <- c("Aggravated Assualt", "Criminal Homicide", "Forcible Rape", "Other Assualts")
+
+## Make graphs top 10 graphs for 3 prevent categories and store them on a 3 grid 
+## Theft
+prevent_theft <- df %>% filter(Crime_Type %in% theft & is.na(NeighName) != TRUE) %>% group_by(NeighName) %>% summarise(Crime = n()) %>%
+  arrange(desc(Crime))
+prevent_theft <- prevent_theft[1:10,]
+prevent_theft_top10 <- ggplot(data = prevent_theft, mapping = aes(x = reorder(NeighName, -Crime), y = Crime)) +
+  geom_bar(stat = "identity", fill = "Orange") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(title = "Top 10 Neighborhoods for Theft in 2019", x = "Neighborhood", y = "Number of Crimes")
+
+## Destruction
+prevent_destruction <- df %>% filter(Crime_Type %in% destruction & is.na(NeighName) != TRUE) %>% group_by(NeighName) %>% summarise(Crime = n()) %>%
+  arrange(desc(Crime))
+prevent_destruction <- prevent_destruction[1:10,]
+prevent_destruction_top10 <- ggplot(data = prevent_destruction, mapping = aes(x = reorder(NeighName, -Crime), y = Crime)) +
+  geom_bar(stat = "identity", fill = "Gold") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(title = "Top 10 Neighborhoods for Destruction in 2019", x = "Neighborhood", y = "Number of Crimes")
+
+## Violent Crimes
+prevent_violent_crimes <- df %>% filter(Crime_Type %in% violent_crimes & is.na(NeighName) != TRUE) %>% group_by(NeighName) %>% summarise(Crime = n()) %>%
+  arrange(desc(Crime))
+prevent_violent_crimes <- prevent_violent_crimes[1:10,]
+prevent_violent_crimes_top10 <- ggplot(data = prevent_violent_crimes, mapping = aes(x = reorder(NeighName, -Crime), y = Crime)) +
+  geom_bar(stat = "identity", fill = "Black") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(title = "Top 10 Neighborhoods for Violent Crimes in 2019", x = "Neighborhood", y = "Number of Crimes")
+
+grid.arrange(prevent_theft_top10, prevent_destruction_top10, prevent_violent_crimes_top10, ncol = 3)
+```
+<p> Figure 6: Top 10 charts broken up by neighborhood for each of the three preventable crime categories</p>
+<br>
+<p>	From these graphs we see can see two things. First, the number of crimes scale down from left to right. The 10th highest neighborhood for theft has more total crimes than the top ten combined for violent crimes. Because of this, theft crimes will be weighted higher as they have more opportunities to be prevented.</p>
+
+<p>Second, we see that there are a few neighborhoods that are repeat offenders for types of crime. Downtown, Dutchtown and the Central West End all rank in at least 2 of the 3 top 10's for our preventable crimes. Dutchtown is especially bad as it is in the top 3 of all three categories, while leading in 2. Due to the high rankings and repeat appearances across categories, these three neighborhoods are perfect locations to focus on preventing and deterring crime.</p>
+
+<p>Along with knowing where we need to have resources to prevent and deter crime, we need to know when these crimes occur. To do this, I created time series graphs for each of the three categories :</p>
+<br>
+
+```{r echo = FALSE}
+## Create Time Series for three subcategories of preventable crimes
+## Theft Time Series
+prevent_theft_hours <- df %>% filter(Crime_Type %in% theft) %>% group_by(Hour) %>% summarise(Crime = n())
+prevent_theft_hours_time <- ggplot(data = prevent_theft_hours, mapping = aes(x = Hour, y = Crime)) +
+  geom_line() +
+  labs(title = "Theft Crime Occurances by Hour of the Day in 2019", x = "Hour of the Day", y = "Number of Crimes") +
+  geom_vline(xintercept = 17, color = "Gold")
+
+## Desctruction
+prevent_destruction_hours <- df %>% filter(Crime_Type %in% destruction) %>% group_by(Hour) %>% summarise(Crime = n())
+prevent_desctruction_hours_time <- ggplot(data = prevent_destruction_hours, mapping = aes(x = Hour, y = Crime)) +
+  geom_line() + 
+  labs(title = "Destructive Crime Occurances by Hour of the Day in 2019", x = "Hour of the Day", y = "Number of Crimes") +
+  geom_vline(xintercept = 22, color = "Gold")
+
+## Violent Crimes
+prevent_violent_crimes_hours <- df %>% filter(Crime_Type %in% violent_crimes) %>% group_by(Hour) %>% summarise(Crime = n())
+prevent_violent_crimes_hours_time <- ggplot(data = prevent_violent_crimes_hours, mapping = aes(x = Hour, y = Crime)) +
+  geom_line() +
+  labs(title = "Violent Crime Occurances by Hour of the Day in 2019", x = "Hour of the Day", y = "Number of Crimes") +
+  geom_vline(xintercept = 23, color = "Gold")
+
+grid.arrange(prevent_theft_hours_time, prevent_desctruction_hours_time, prevent_violent_crimes_hours_time)
+
+```
+<p>Figure 7: Time Series graphs for a 24 hour period for each of the three preventable crime categories.</p>
+<br>
+<p>Having these graphs is very important in determining placement and timing of resources. The general time series plot, and crime counts by hour show that 5PM is the peak of overall crime for St. Louis City. However, when broken into smaller categories we can see that the specific peaks are later. Theft peaks around 7PM, destructive crimes peak around 10PM and violent crimes peak at 11PM. This spread is actually good, as it allows police resources to be rotated to cover multiple areas over multiple time frames.</p>
+
+<h2><u>Error Analysis</h2></u>
+<p>There are certain assumptions and limitations inherent in the data collected and the points made above. For procedural error there is in one method that may influence the findings. By removing “All Other Offenses”, I removed roughly 18% of all crimes. This category makes up a large portion of the crimes, but cannot be relied on to be included in a category due to the vague description. While not all of these crimes would have been included in the three preventable categories, there are most likely some crimes that would have been included had they had better descriptions.</p>
+
+<p>	Random error comes from the sample size of this data set. This report used almost 48,000 crimes to produce the assumptions of neighborhood crime rankings, prevalence of certain crimes at different times and locations and general crime statistics based off of hours, days, weeks and months. The more granular the statistic, such as those based off hours and days, the more accurate they are due to the laws of large numbers. However, some of the statistics that focus on larger groups, such as which months of the year are most dangerous, are less likely to be accurate as they do not have a large sample size to compare against (multiple years). </p>
+
+<p>Because of this, to truly get an understanding of how time of the year plays into crime, we would have to examine multiple years if not decades. Common sense would agree that the summer months are the most active times for people and crime, but common sense has been wrong before.</p>
+
+<p>Overall, the findings of this report should be accurate as they are not strongly affected by some of the random error discussed in this section. </p>
+
+<p>	Looking to future reports, I am curious how current events will affect crime in general. It will be interesting to compare the findings from the 2019 Crime Report Data with that of the 2020 Crime Report Data as the COVID-19 virus is sure to have an impact on STL City crime in 2020.</p>
+
+<h2><u>Conclusion</h2></u>
+<p>From our study of the St. Louis City crime reports we now know a number of things. Generally speaking, crime is highest during the summer, tends towards the early and end days of the week and is most frequent right as work is ending. For crimes that can be prevented or deterred, they are most common in Downtown, Dutchtown and the Central West End and occur between 7PM and midnight.</p>
+
+<p>Based off the data, my recommendations would be to have extra police presence in Dutchtown throughout the entire 7PM to midnight block and place extra police presence around Downtown and the Central West End from 7PM-11PM. While this is not a sure way to prevent and deter all crime, it should be a good start.</p>
+
+
+<h2><u>Notes</u></h2>
+<p>1. “St. Louis City, Missouri Population 2020,” (website), http://worldpopulationreview.com/us-counties/mo/st-louis-city-population/ (accessed February 4, 2020).</p>
+
+<p>2. “Missouri Lawmakers Likely To End Residency Requirement For St. Louis Police,” Jaclyn Driscoll (website), https://news.stlpublicradio.org/post/missouri-lawmakers-likely-end-residency-requirement-st-louis-police#stream/0 (accessed February 4, 2020).</p>
+
+<p>3. “SLMPD Downloadable Crime Files”, (website), https://www.slmpd.org/Crimereports.shtml (accessed January 16, 2020).</p>
+
+<p>4. "STL-Crime-Stats-2019" (Website), https://github.com/dpericich/STL-Crime-Stats-2019 (accessed March 29, 2020). </p>
+
+<h2><u>Appendix</h2></u>
+<h3>Figure A</h3>
+```{r echo = FALSE, fig.width=25, fig.height=15}
+neigh_base <- ggplot(data = neighborhood, mapping = aes(x = reorder(NeighName, -Crime), y = Crime)) +
+  geom_bar(stat = "identity", fill = "Gold") +
+  labs(title = "St. Louis City Crime Counts by Neighborhood in 2019", x = "Neighborhood",
+       y = "Number of Crimes", caption = "Fig A : Crime counts broken up by neighborhoods and public 
+       areas in St. Louis during 2019") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), plot.title = element_text(hjust = 0.5),
+        plot.caption = element_text(hjust = 0))
+
+neigh_base
+```
+
+
+<h3>Figure B</h3>
+```{r echo=FALSE}
+crime_counts_neighborhood <- df %>% filter(is.na(NeighName) != TRUE) %>% group_by(NeighName) %>% summarise(Crime = n()) %>% arrange(desc(Crime))
+print(crime_counts_neighborhood, n = 90)
+```
+<p>Fig B : A table showing all 79 neighborhoods and 9 public areas total crime counts in descending order.</p>
+
+
+<h3>Figure C </h3>
+```{r echo = FALSE}
+print(crime_count, n = 30)
+```
+
+<p>Fig C : A table showing all 24 types of crime in descending order of number of offenses recorded in 2019.</p>
+
+
+<h3>Figure D</h3>
+```{r echo=FALSE, fig.width = 25, fig.height=15}
+ts_hour <- df %>% count(Hour, Crime_Type)
+ggplot(data = ts_hour, mapping = aes(x = Hour, y = n, color = Crime_Type)) +
+  geom_line() + 
+  labs(title = "St. Louis City Crime Counts by Hour for Individual Crime Types", x = "Hour of the Day",
+       y = "Total Number of Crimes", caption = "Fig B : Time Series plot showing the 2019 counts of each individual crime over a 24 hour period.") +
+  theme(plot.title = element_text(hjust = 0.5), plot.caption = element_text(hjust = 0))
+```

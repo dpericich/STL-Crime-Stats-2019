@@ -81,7 +81,7 @@ top_ten_base <- ggplot(data = top_ten, mapping = aes(x = reorder(NeighName, -Cri
         plot.caption = element_text(hjust = 0))
 
 ## Plot only neighborhoods that make up at least 2% of crime in the city
-ordered_per_neigh <- arrange(per_neigh, desc(Crime))
+ordered_per_neigh <- arrange(neighborhood, desc(Crime))
 top_two_percent_neigh <- ordered_per_neigh[1:11,]
 top_two_percent_neigh_base <- ggplot(data = top_two_percent_neigh, mapping = aes(x = reorder(
   NeighName, -Crime), y = Crime)) +
@@ -150,31 +150,31 @@ crimes_by_count <- df %>% group_by(Crime_Type) %>% summarise(Crime = n()) %>% ar
 
 ## Make graphs top 10 graphs for 3 prevent categories and store them on a 3 grid 
 ## Theft
-prevent_theft <- df %>% filter(Crime_Type %in% theft) %>% group_by(NeighName) %>% summarise(Crime = n()) %>%
+prevent_theft <- df %>% filter(Crime_Type %in% theft & is.na(NeighName) != TRUE) %>% group_by(NeighName) %>% summarise(Crime = n()) %>%
   arrange(desc(Crime))
 prevent_theft <- prevent_theft[1:10,]
 prevent_theft_top10 <- ggplot(data = prevent_theft, mapping = aes(x = reorder(NeighName, -Crime), y = Crime)) +
   geom_bar(stat = "identity", fill = "Orange") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  labs(title = "Top 10 Neighborhoods for Theft in 2019")
+  labs(title = "Top 10 Neighborhoods for Theft in 2019", x = "Neighborhood", y = "Number of Crimes")
 
 ## Destruction
-prevent_destruction <- df %>% filter(Crime_Type %in% destruction) %>% group_by(NeighName) %>% summarise(Crime = n()) %>%
+prevent_destruction <- df %>% filter(Crime_Type %in% destruction & is.na(NeighName) != TRUE) %>% group_by(NeighName) %>% summarise(Crime = n()) %>%
   arrange(desc(Crime))
 prevent_destruction <- prevent_destruction[1:10,]
 prevent_destruction_top10 <- ggplot(data = prevent_destruction, mapping = aes(x = reorder(NeighName, -Crime), y = Crime)) +
   geom_bar(stat = "identity", fill = "Gold") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  labs(title = "Top 10 Neighborhoods for Destruciton in 2019")
+  labs(title = "Top 10 Neighborhoods for Destruciton in 2019", x = "Neighborhood", y = "Number of Crimes")
 
 ## Violent Crimes
-prevent_violent_crimes <- df %>% filter(Crime_Type %in% violent_crimes) %>% group_by(NeighName) %>% summarise(Crime = n()) %>%
+prevent_violent_crimes <- df %>% filter(Crime_Type %in% violent_crimes & is.na(NeighName) != TRUE) %>% group_by(NeighName) %>% summarise(Crime = n()) %>%
   arrange(desc(Crime))
 prevent_violent_crimes <- prevent_violent_crimes[1:10,]
 prevent_violent_crimes_top10 <- ggplot(data = prevent_violent_crimes, mapping = aes(x = reorder(NeighName, -Crime), y = Crime)) +
   geom_bar(stat = "identity", fill = "Black") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  labs(title = "Top 10 Neighborhoods for Violent Crimes in 2019")
+  labs(title = "Top 10 Neighborhoods for Violent Crimes in 2019", x = "Neighborhood", y = "Number of Crimes")
 
 grid.arrange(prevent_theft_top10, prevent_destruction_top10, prevent_violent_crimes_top10, ncol = 3)
 
@@ -183,22 +183,23 @@ grid.arrange(prevent_theft_top10, prevent_destruction_top10, prevent_violent_cri
 prevent_theft_hours <- df %>% filter(Crime_Type %in% theft) %>% group_by(Hour) %>% summarise(Crime = n())
 prevent_theft_hours_time <- ggplot(data = prevent_theft_hours, mapping = aes(x = Hour, y = Crime)) +
   geom_line() +
-  labs(title = "Theft Crime Occurances by Hour of the Day in 2019") +
-  geom_vline(xintercept = 17, color = "red")
+  labs(title = "Theft Crime Occurances by Hour of the Day in 2019", x = "Hour of the Day", y = "Number of Crimes") +
+  geom_vline(xintercept = 17, color = "Gold")
 
 ## Desctruction
 prevent_destruction_hours <- df %>% filter(Crime_Type %in% destruction) %>% group_by(Hour) %>% summarise(Crime = n())
 prevent_desctruction_hours_time <- ggplot(data = prevent_destruction_hours, mapping = aes(x = Hour, y = Crime)) +
   geom_line() + 
-  labs(title = "Destructive Crimes Occurances by Hour of the Day in 2019") +
-  geom_vline(xintercept = 22, color = "red")
+  labs(title = "Destructive Crimes Occurances by Hour of the Day in 2019", x = "Hour of the Day", y = "Number of Crimes") +
+  geom_vline(xintercept = 22, color = "Gold")
 
 ## Violent Crimes
 prevent_violent_crimes_hours <- df %>% filter(Crime_Type %in% violent_crimes) %>% group_by(Hour) %>% summarise(Crime = n())
 prevent_violent_crimes_hours_time <- ggplot(data = prevent_violent_crimes_hours, mapping = aes(x = Hour, y = Crime)) +
   geom_line() +
-  labs(title = "Violent Crime Occurances by Hour of the Day in 2019") +
-  geom_vline(xintercept = 23, color = "red")
+  labs(title = "Violent Crime Occurances by Hour of the Day in 2019", x = "Hour of the Day", y = "Number of Crimes") +
+  geom_vline(xintercept = 23, color = "Gold")
 
 grid.arrange(prevent_theft_hours_time, prevent_desctruction_hours_time, prevent_violent_crimes_hours_time)
 
+crime_counts_neighborhood <- df %>% filter(is.na(NeighName) != TRUE) %>% group_by(NeighName) %>% summarise(Crime = n()) %>% arrange(desc(Crime))
