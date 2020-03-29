@@ -55,7 +55,7 @@ df <- mutate(df, Crime_General = substr(df$Crime, start = 1, stop =2))
 
 ## Create second data frame for Crime Code Description Matching
 crime_type <- c("Criminal Homicide", "Forcible Rape", "Robbery", "Aggravated Assault", 
-                "Burglary", "Larceny", "Motor Vehicle Theft", "Arson", "Other Assualts",
+                "Burglary", "Larceny", "Motor Vehicle Theft", "Arson", "Other Assaults",
                 "Forgery and Counterfeiting", "Fraud", "Embezzlement", "Stolen Property", 
                 "Vandalism", "Weapons Possession", "Prosititution", "Sex Offenses", 
                 "Drug Abuse Violations", "Gambling", "Offenses Against the Family and Children", 
